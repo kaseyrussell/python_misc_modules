@@ -40,8 +40,6 @@ class Spectrum():
     normalizing it [*self.normalize()*], etc.
     """
     def __init__( self, fname, cts_per_sec=False ):
-        #if not fname.endswith('.SPE'):
-            #raise ValueError( 'Can only create a Spectrum class object from an SPE file; fname=%s'%fname)
         if not (fname.endswith('.SPE') or fname.endswith('.txt')):
             raise ValueError( 'Can only create a Spectrum class object from an SPE or txt file; fname=%s' % fname )
             
@@ -54,7 +52,6 @@ class Spectrum():
         self._slope_remove  = False
         self._counts_per_second = False
 
-        self.read_spe( cts_per_sec )
         if fname.endswith('.SPE'):
             self.read_spe( cts_per_sec )
         if fname.endswith('.txt'):
@@ -642,9 +639,7 @@ class Spectrum():
         """
         Shanying 2/22/2012, reads simple text files with only 2 columns: wavelength and intensity
         """
-        print 'in read_txt'
         data = pylab.loadtxt(self.fname)
-        print data
         self.wavelen = data[:,0]
         self.lum = data[:,1]
         self.flatfield_corrected = False
