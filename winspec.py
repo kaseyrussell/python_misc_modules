@@ -16,9 +16,13 @@
 # May 2010:
 # Extended to handle spectroscopy data (x-calibration) and 
 # Spectrum class added for convenience.
+<<<<<<< HEAD
 # Kasey Russell (krussell at post.harvard.edu)
 #
 # Some yoffset features added by Shanying Cui
+=======
+# Kasey Russell (krussell@post.harvard.edu)
+>>>>>>> c52d1292080580ce0c32d79d1eeb6c07bdb8b543
 #
 
 from __future__ import division
