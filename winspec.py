@@ -19,7 +19,6 @@
 # Kasey Russell (krussell at post.harvard.edu)
 #
 # Some yoffset features added by Shanying Cui
-=======
 # Kasey Russell (krussell@post.harvard.edu)
 #
 
