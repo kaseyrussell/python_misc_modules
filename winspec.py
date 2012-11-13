@@ -40,8 +40,10 @@ class Spectrum():
     normalizing it [*self.normalize()*], etc.
     """
     def __init__( self, fname, cts_per_sec=False ):
-        if not fname.endswith('.SPE'):
-            raise ValueError( 'Can only create a Spectrum class object from an SPE file; fname=%s' % fname )
+        #if not fname.endswith('.SPE'):
+            #raise ValueError( 'Can only create a Spectrum class object from an SPE file; fname=%s'%fname)
+        if not (fname.endswith('.SPE') or fname.endswith('.txt')):
+            raise ValueError( 'Can only create a Spectrum class object from an SPE or txt file; fname=%s' % fname )
             
         self.fname          = fname
         self.cts_per_sec    = cts_per_sec
@@ -53,6 +55,10 @@ class Spectrum():
         self._counts_per_second = False
 
         self.read_spe( cts_per_sec )
+        if fname.endswith('.SPE'):
+            self.read_spe( cts_per_sec )
+        if fname.endswith('.txt'):
+            self.read_txt()
         self.raw_lum = self.lum.copy()
 
     def background_correct( self, fname  ):
@@ -632,7 +638,18 @@ class Spectrum():
             p = numpy.array([ pcoeffs [2], pcoeffs [1], pcoeffs [0] ])
             self.wavelen = numpy.polyval( p, xrange( 1, 1+len(self.lum) ) )
 
-
+    def read_txt( self ):
+        """
+        Shanying 2/22/2012, reads simple text files with only 2 columns: wavelength and intensity
+        """
+        print 'in read_txt'
+        data = pylab.loadtxt(self.fname)
+        print data
+        self.wavelen = data[:,0]
+        self.lum = data[:,1]
+        self.flatfield_corrected = False
+        self.background_corrected = False
+        
     def remove_cosmic_rays( self, threshold=3.0, interpolate=False ):
         """
         This assumes that you've already loaded the file and have self.lum
