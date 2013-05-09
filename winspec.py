@@ -47,7 +47,7 @@ class Spectrum():
             raise ValueError( 'Can only create a Spectrum class object from an SPE or txt file; fname=%s' % fname )
             
         self.fname          = fname
-        self.cts_per_sec    = cts_per_sec
+        self.cts_per_sec    = False # cts_per_sec # Force load counts so self.raw_lum is counts, then correct counts/sec later
         self.ax             = None
         self.fit_params     = None
         self.laser          = None
@@ -56,10 +56,12 @@ class Spectrum():
         self._counts_per_second = False
 
         if fname.endswith('.SPE'):
-            self.read_spe( cts_per_sec )
+            self.read_spe()
         if fname.endswith('.txt'):
             self.read_txt()
         self.raw_lum = self.lum.copy()
+        if cts_per_sec:
+            self.counts_per_second()
 
     def background_correct( self, fname  ):
         """
@@ -100,7 +102,7 @@ class Spectrum():
         method will divide the luminescence intensity by the exposure time
         to correct it. If you did load it with 'cts_per_sec=True', then
         this method does nothing. """
-        if not cts_per_sec:
+        if not self._counts_per_second:
             self.lum /= self.exposure
             self._counts_per_second = True
         
@@ -667,19 +669,19 @@ class Spectrum():
             return
 
         d = numpy.diff(self.lum)
-        spikes = pylab.find(abs(d)>threshold*std(d)) 
+        spikes = pylab.find(abs(d)>threshold*numpy.std(d)) 
         if ( len(spikes)>0.1*len(d) ): 
             print 'Did not remove spikes because it wanted to remove too many.'
-        spikes=delete( spikes,pylab.find(numpy.diff(spikes)==1)+1 ) # if spike is one point, don't delete point after as well.
+        spikes=numpy.delete( spikes,pylab.find(numpy.diff(spikes)==1)+1 ) # if spike is one point, don't delete point after as well.
         if interpolate==False:
-            self.wavelen = delete(self.wavelen,spikes+1)
-            self.lum = delete(self.lum,spikes+1)
+            self.wavelen = numpy.delete(self.wavelen,spikes+1)
+            self.lum = numpy.delete(self.lum,spikes+1)
         else:
             # don't actually 'interpolate', just set it equal to the previous point
             # (actual interpolation could get messy in the case of a two-point spike, for example)
             for i in spikes+1:
                 self.lum[i] = self.lum[i-3]
-        if (numpy.any(numpy.abs(numpy.diff(self.lum))>threshold*std(d))):
+        if (numpy.any(numpy.abs(numpy.diff(self.lum))>threshold*numpy.std(d))):
             self.remove_cosmic_rays( threshold, interpolate )
 
 
@@ -734,8 +736,9 @@ class Spectrum():
             self.lum -= self.lum.min()
             
     def reset_lum( self ):
-        """ undo any normalization or background correction, etc."""
+        """ undo any normalization, background correction, or counts/second conversion, etc."""
         self.lum = self.raw_lum.copy()
+        self._counts_per_second = False
 
     def save_ascii( self, fname ):
         g=numpy.zeros([len(self.lum),2])
@@ -747,6 +750,12 @@ class Spectrum():
         """ this allows you to plot the data to a particular axes
         """
         self.ax = axes
+
+    def set_laser( self, laser ):
+        """ Set the wavelength (in nm) of the exciting laser (useful for plotting with as_raman=True)
+            Example usage for 532nm laser: self.set_laser( 532.0 )
+        """
+        self.laser = laser
         
 ################################################### 
 ################################################### 
