@@ -89,7 +89,7 @@ def easyfitlorentzians( datax, datay, halfwidth=5.0 ):
     for peak in dict_of_bestparams:
         peak['Q'] = peak['x0']/2/peak['halfwidth']
         # error in Q is returned as a min/max tuple of the standard error
-        peak['Q_err'] = asarray( (peak['x0']-peak['x0_err'])/2/(peak['halfwidth']+peak['halfwidth_err']),
+        peak['Q_err'] = np.asarray( (peak['x0']-peak['x0_err'])/2/(peak['halfwidth']+peak['halfwidth_err']),
                                  (peak['x0']+peak['x0_err'])/2/(peak['halfwidth']-peak['halfwidth_err']) )
         peak['Q_err'] = np.abs( peak['Q'] - peak['Q_err'] )
         
@@ -168,8 +168,13 @@ def lorentzians( x, *args, **kwargs ):
     each individual Lorentzian then has three parameters.
     For a single Lorentzian, params can be a dict containing the keys yoffset, ymax, x0, and halfwidth."""
 
-    if len(kwargs) > 0:
-    #if type(params)==dict:
+    if len(kwargs) == 1:
+        if 'params' in kwargs.keys():
+            params = kwargs['params']
+            return params['yoffset']+params['ymax']/(1+((x-params['x0'])/params['halfwidth'])**2)
+        else:
+            raise KeyError, "Single keyword argument must be 'params'."
+    elif len(kwargs) > 1:
         return kwargs['yoffset']+kwargs['ymax']/(1+((x-kwargs['x0'])/kwargs['halfwidth'])**2)
     else:
         freeparams = 3 # number free parameters per lorentzian, not counting yoffset

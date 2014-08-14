@@ -9,6 +9,54 @@ Various functions to parse Lumerical output using python.
 KJR June 2010 (start)
 """
 
+def loadmat_timeseries(fname, pos=True, keys=None):
+    """
+    Loads a 1D timeseries dataset that was exported from Lumerical in matlab format.
+    We assume that the dataset contains the keys:
+    t, Ex, Ey, Ez
+
+    Function calculates fft, returns wavelength in nm, E2(wavelength)
+    If pos==True (default), then return only the positive-frequency values.
+
+    keys (optional) is a dict() with keys t, Ex, Ey, Ez for specifying the names
+    of the corresponding keys in the matlab dataset.
+    """
+    from scipy.io import loadmat
+
+    d = loadmat(fname)
+    if keys is None:
+        t_key  = 't'
+        Ex_key = 'Ex'
+        Ey_key = 'Ey'
+        Ez_key = 'Ez'
+    else:
+        t_key  = keys['t']
+        Ex_key = keys['Ex']
+        Ey_key = keys['Ey']
+        Ez_key = keys['Ez']
+
+    assert d.has_key(t_key)
+    assert d.has_key(Ex_key)
+    assert d.has_key(Ey_key)
+    assert d.has_key(Ez_key)
+   
+    t  = d[t_key]
+    Ex = d[Ex_key][0,0,0]
+    Ey = d[Ey_key][0,0,0]
+    Ez = d[Ez_key][0,0,0]
+
+    fs  = np.fft.fftfreq(t.size, d=(t[1]-t[0])[0]) #/2/np.pi
+    fs  = np.fft.fftshift(fs)
+    Exw = np.fft.fft(Ex)    # fft each component separately
+    Eyw = np.fft.fft(Ey)
+    Ezw = np.fft.fft(Ez)
+    E2w = np.fft.fftshift(np.abs(Exw)**2+np.abs(Eyw)**2+np.abs(Ezw)**2)  # combine field components
+    if pos:
+        start = np.where(fs>0)[0][0]
+        return 3.0e8/fs[start:]*1e9, E2w[start:]
+    else:
+        return 3.0e8/fs*1e9, E2w
+
 def load_bandstructure( fname ):
     """
     This function loads in a *.txt file that was manually saved after running a bandstructure sweep.
@@ -196,23 +244,67 @@ def load2D( fname ):
         
     return d1, d2, fields
 
-def plot2Dmonitor( fname, rotate=False, offset=[0,0], cmap='Purples', ax=None, E2=False ):
+def plot2Dmonitor( fname, **kwargs ):
     """
     make a nice pcolormesh plot that has same units in both axes
     usage: plot2Dmonitor( fname ) where fname is a txt file exported manually from CAD.
+    Various keyword arguments are supported (in addition to any :
+        rotate:    True/False for whether colormap should be rotated 90deg
+        offset:    [x,y] tuple specifying lateral shift of origin for plotting
+        ax:        axes instance for plotting. If not specified, gca() is used.
+        take_sqrt: True/False. If True, take np.sqrt() before plotting (formerly E2)
+        logscale:  True/False. If True, take np.log10() before plotting
+        flipvert:  True/False. If True, multiply the locations of the vertical axis by -1 to flip it.
+        
     """
     d1, d2, fields = load2D( fname )
-    if E2: fields = np.sqrt(fields) # you exported E-squared (E intensity) but you want abs(E).
     D1 = kc.centers_to_corners( d1 )
     D2 = kc.centers_to_corners( d2 )
     
-    if ax==None: ax=plt.gca()
+    if 'E2' in kwargs.keys():
+        raise ValueError, "E2 is deprecated and was replaced with take_sqrt (which acts equivalently)."
 
+    if 'rotate' in kwargs.keys():
+        rotate = kwargs['rotate']
+        del kwargs['rotate']
+    else:
+        rotate = False
+    
+    if 'offset' in kwargs.keys():
+        offset = kwargs['offset']
+        del kwargs['offset']
+    else:
+        offset = [0,0]
+    
+    if 'ax' in kwargs.keys():
+        ax = kwargs['ax']
+        del kwargs['ax']
+    else:
+        ax=plt.gca()
+        
+    if 'flipvert' in kwargs.keys():
+        flipvert = kwargs['flipvert']
+        del kwargs['flipvert']
+    else:
+        flipvert=False
+        
+    if 'take_sqrt' in kwargs.keys():
+        if kwargs['take_sqrt']:
+            fields = np.sqrt(fields) # you exported E-squared (E intensity) but you want abs(E).
+        del kwargs['take_sqrt']
+        
+    if 'logscale' in kwargs.keys():
+        if kwargs['logscale']:
+            fields = np.log10(fields)
+        del kwargs['logscale']
+        
     if rotate==True:
-        plot = ax.pcolormesh( D1+offset[0], D2+offset[1], transpose( fields ), cmap=cmap )
+        if flipvert: D2 *= -1
+        plot = ax.pcolormesh( D1+offset[0], D2+offset[1], np.transpose( fields ), **kwargs )
         ax.axis([ D1.min()+offset[0], D1.max()+offset[0], D2.min()+offset[1], D2.max()+offset[1] ])
     else:
-        plot = ax.pcolormesh( D2+offset[0], D1+offset[1], fields, cmap=cmap )
+        if flipvert: D1 *= -1
+        plot = ax.pcolormesh( D2+offset[0], D1+offset[1], fields, **kwargs )
         ax.axis([ D2.min()+offset[0], D2.max()+offset[0], D1.min()+offset[1], D1.max()+offset[1] ])
 
     ax.set_aspect('equal')

@@ -1,5 +1,5 @@
 import wxversion
-wxversion.select("2.8")
+wxversion.select("2.9")
 import wx
 import matplotlib
 if matplotlib.get_backend() != 'WXAgg':
